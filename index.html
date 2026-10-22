@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prywatny Panel Ocen</title>
+    <style>
+        :root {
+            --primary: #2b579a;
+            --bg: #eef2f7;
+            --card: #ffffff;
+            --text: #222222;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 450px;
+            width: 100%;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        h1 { color: var(--primary); font-size: 24px; margin-bottom: 5px; }
+        .card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            text-transform: uppercase;
+        }
+        input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 12px;
+        }
+        button:hover { background-color: #1e3f70; }
+        .result-box { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .error-text { color: #d32f2f; font-weight: bold; margin-top: 10px; display: none; text-align: center; }
+        .grade-badge {
+            display: inline-block;
+            background: #e2ecf7;
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .journal-text {
+            background: #f7f9fa;
+            border-left: 4px solid var(--primary);
+            padding: 12px;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🔒 Prywatny Panel Ocen</h1>
+        <p>Wpisz swój tajny kod, aby zobaczyć wyniki.</p>
+    </header>
+
+    <div class="card">
+        <label for="studentCode">🔑 Podaj swój kod ucznia:</label>
+        <input type="text" id="studentCode" placeholder="np. A101" autocomplete="off">
+        <button onclick="sprawdzOcene()">Sprawdź wyniki</button>
+        <div id="errorMsg" class="error-text">❌ Nieprawidłowy kod. Spróbuj ponownie!</div>
+    </div>
+
+    <div id="resultBox" class="card result-box">
+        <h3 style="margin-top:0; color: var(--primary);">Sprawdzone konto: <span id="displayId"></span></h3>
+        <h4>Twoje oceny:</h4>
+        <div id="studentGrades"></div>
+        <h4>Uwagi i dziennik zadań:</h4>
+        <p id="studentJournal" class="journal-text"></p>
+    </div>
+</div>
+
+<script>
+    // BAZA KODÓW DLA 14 OSÓB:
+    const bazaOcen = {
+        "A101": { grades: ["Kartkówka 1: Ocena 5"], journal: "Super początek! Pracuj tak dalej." },
+        "B102": { grades: ["Kartkówka 1: Ocena 4"], journal: "Dobry wynik. Przypomnij sobie ostatni temat." },
+        "C103": { grades: ["Kartkówka 1: Ocena 3+"], journal: "W porządku, ale stać Cię na więcej!" },
+        "D104": { grades: ["Kartkówka 1: Ocena 5-"], journal: "Bardzo ładna odpowiedź na karcie." },
+        "E105": { grades: ["Kartkówka 1: Ocena 4+"], journal: "Ładnie! Oby tak dalej na kolejnych lekcjach." },
+        "F106": { grades: ["Kartkówka 1: Ocena 6"], journal: "Wspaniale, bezbłędna praca!" },
+        "G107": { grades: ["Kartkówka 1: Ocena 4"], journal: "Stabilna ocena, dobra robota." },
+        "H108": { grades: ["Kartkówka 1: Ocena 3"], journal: "Warto powtórzyć materiał z podręcznika." },
+        "J109": { grades: ["Kartkówka 1: Ocena 5"], journal: "Świetna wiedza i pełna punktacja z zadań zamkniętych." },
+        "K110": { grades: ["Kartkówka 1: Ocena 4-"], journal: "Dobre chęci, popraw drobne błędy w obliczeniach." },
+        "M111": { grades: ["Kartkówka 1: Ocena 5+"], journal: "Otarłeś się o szóstkę! Rewelacja." },
+        "N112": { grades: ["Kartkówka 1: Ocena 4"], journal: "Zadanie pierwsze super, w drugim zabrakło czasu." },
+        "O113": { grades: ["Kartkówka 1: Ocena 3+"], journal: "Krok w dobrą stronę. Ćwicz dalej." },
+        "P114": { grades: ["Kartkówka 1: Ocena 5"], journal: "Bardzo dojrzałe odpowiedzi. Gratulacje!" }
+    };
+
+    function sprawdzOcene() {
+        const inputCode = document.getElementById('studentCode').value.trim().toUpperCase();
+        const resultBox = document.getElementById('resultBox');
+        const errorMsg = document.getElementById('errorMsg');
+        
+        resultBox.style.display = "none";
+        errorMsg.style.display = "none";
+
+        if (bazaOcen[inputCode]) {
+            const dane = bazaOcen[inputCode];
+            document.getElementById('displayId').innerText = "Uczeń [" + inputCode + "]";
+            
+            const gradesContainer = document.getElementById('studentGrades');
+            gradesContainer.innerHTML = "";
+            dane.grades.forEach(grade => {
+                gradesContainer.innerHTML += `<div class="grade-badge">${grade}</div> `;
+            });
+
+            document.getElementById('studentJournal').innerText = dane.journal;
+            resultBox.style.display = "block";
+        } else {
+            if (inputCode !== "") { errorMsg.style.display = "block"; }
+        }
+    }
+</script>
+
+</body>
+</html>
